@@ -156,7 +156,7 @@ public class MainActivity extends AppCompatActivity {
                         selectedDate = foundDates.get(0);
                     }
 
-                    
+
                     if (selectedDate != null) {
                         ocrResults.add("Data wystawienia: " + selectedDate);
                     } else {
