@@ -104,7 +104,7 @@ public class MainActivity extends AppCompatActivity {
         recognizer.process(image)
                 .addOnSuccessListener(resultText -> {
                     String recognizedText = resultText.getText().toUpperCase();
-                    
+
                     recognizedText = recognizedText.replaceAll("WYSTNSENIA", "WYSTAWIENIA");
                     ocrResults.clear();
 
