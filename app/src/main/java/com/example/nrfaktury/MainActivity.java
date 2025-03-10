@@ -9,6 +9,7 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -49,6 +50,16 @@ public class MainActivity extends AppCompatActivity {
 
         adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, ocrResults);
         lstResults.setAdapter(adapter);
+
+        lstResults.setOnItemLongClickListener((parent, view, position, id) -> {
+            String selectedText = ocrResults.get(position);
+            android.content.ClipboardManager clipboard =
+                    (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+            android.content.ClipData clip = android.content.ClipData.newPlainText("Skopiowany tekst", selectedText);
+            clipboard.setPrimaryClip(clip);
+            Toast.makeText(this, "Skopiowano: " + selectedText, Toast.LENGTH_SHORT).show();
+            return true; 
+        });
 
         cameraLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
