@@ -104,21 +104,63 @@ public class MainActivity extends AppCompatActivity {
         recognizer.process(image)
                 .addOnSuccessListener(resultText -> {
                     String recognizedText = resultText.getText().toUpperCase();
-
                     ocrResults.clear();
 
-                    Pattern slashPattern = Pattern.compile("[^\\s/]+(?:/[^\\s/]+){2,}");
-                    Matcher matcher = slashPattern.matcher(recognizedText);
 
-                    boolean foundAny = false;
-                    while (matcher.find()) {
-                        foundAny = true;
-                        String found = matcher.group();
-                        ocrResults.add("Znaleziony numer: " + found);
+                    Pattern invoicePattern = Pattern.compile("[^\\s/]+(?:/[^\\s/]+){2,}");
+                    Matcher invoiceMatcher = invoicePattern.matcher(recognizedText);
+
+                    if (invoiceMatcher.find()) {
+                        String invoiceNumber = invoiceMatcher.group();
+                        ocrResults.add("Numer faktury: " + invoiceNumber);
+                    } else {
+                        ocrResults.add("Nie znaleziono numeru faktury.");
                     }
 
-                    if (!foundAny) {
-                        ocrResults.add("Nie znaleziono ciągu z co najmniej dwoma ukośnikami.");
+
+                    Pattern datePattern = Pattern.compile("\\b(\\d{4}[-.]\\d{2}[-.]\\d{2}|\\d{2}[-.]\\d{2}[-.]\\d{4})\\b");
+                    Matcher dateMatcher = datePattern.matcher(recognizedText);
+
+
+                    Pattern labelPattern = Pattern.compile("(DATA WYSTAWIENIA|WYSTAWIONO|DNIA)");
+
+
+                    List<Integer> datePositions = new ArrayList<>();
+                    List<String> foundDates = new ArrayList<>();
+
+                    while (dateMatcher.find()) {
+                        datePositions.add(dateMatcher.start());
+                        foundDates.add(dateMatcher.group());
+                    }
+
+
+                    Matcher labelMatcher = labelPattern.matcher(recognizedText);
+                    String selectedDate = null;
+                    int minDistance = Integer.MAX_VALUE;
+
+                    while (labelMatcher.find()) {
+                        int labelPos = labelMatcher.start();
+
+
+                        for (int i = 0; i < datePositions.size(); i++) {
+                            int distance = Math.abs(labelPos - datePositions.get(i));
+                            if (distance < minDistance) {
+                                minDistance = distance;
+                                selectedDate = foundDates.get(i);
+                            }
+                        }
+                    }
+
+
+                    if (selectedDate == null && !foundDates.isEmpty()) {
+                        selectedDate = foundDates.get(0);
+                    }
+
+                    
+                    if (selectedDate != null) {
+                        ocrResults.add("Data wystawienia: " + selectedDate);
+                    } else {
+                        ocrResults.add("Nie znaleziono daty wystawienia.");
                     }
 
                     adapter.notifyDataSetChanged();
@@ -129,4 +171,7 @@ public class MainActivity extends AppCompatActivity {
                     adapter.notifyDataSetChanged();
                 });
     }
+
+
+
 }
