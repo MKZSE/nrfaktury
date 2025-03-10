@@ -29,7 +29,7 @@
         android:layout_width="match_parent"
         android:layout_height="400dp"
         android:layout_marginTop="10dp"
-        android:scaleType="centerCrop" />
+        android:scaleType="centerInside" />
 
     <Button
         android:id="@+id/btnStartOcr"
