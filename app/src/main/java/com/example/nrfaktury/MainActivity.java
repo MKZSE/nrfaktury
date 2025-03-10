@@ -2,21 +2,24 @@ package com.example.nrfaktury;
 
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ListView;
+
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+
 import com.google.mlkit.vision.common.InputImage;
-import com.google.mlkit.vision.text.Text;
 import com.google.mlkit.vision.text.TextRecognizer;
 import com.google.mlkit.vision.text.TextRecognition;
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -30,11 +33,8 @@ public class MainActivity extends AppCompatActivity {
     private ArrayAdapter<String> adapter;
     private Bitmap capturedImage;
 
-    // Przykładowe wzorce – dostosuj je do swoich wymagań
-    private static final String INVOICE_PATTERN = "\\d{3,}"; // np. ciąg cyfr (min. 3 cyfry)
-    private static final String DATE_PATTERN1 = "\\d{2}-\\d{2}-\\d{4}";
-    private static final String DATE_PATTERN2 = "\\d{2}/\\d{2}/\\d{4}";
-    private static final String DATE_PATTERN3 = "\\d{4}-\\d{2}-\\d{2}";
+    private ActivityResultLauncher<Intent> cameraLauncher;
+    private ActivityResultLauncher<Intent> galleryLauncher;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,12 +44,13 @@ public class MainActivity extends AppCompatActivity {
         imgPreview = findViewById(R.id.imgPreview);
         lstResults = findViewById(R.id.lstResults);
         Button btnOpenCamera = findViewById(R.id.btnOpenCamera);
+        Button btnSelectFromGallery = findViewById(R.id.btnSelectFromGallery);
         Button btnStartOcr = findViewById(R.id.btnStartOcr);
 
         adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, ocrResults);
         lstResults.setAdapter(adapter);
 
-        ActivityResultLauncher<Intent> cameraLauncher = registerForActivityResult(
+        cameraLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
                     if (result.getResultCode() == RESULT_OK && result.getData() != null) {
@@ -61,16 +62,36 @@ public class MainActivity extends AppCompatActivity {
                     }
                 });
 
+        galleryLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                        try {
+                            Uri imageUri = result.getData().getData();
+                            capturedImage = MediaStore.Images.Media.getBitmap(this.getContentResolver(), imageUri);
+                            imgPreview.setImageBitmap(capturedImage);
+                        } catch (IOException e) {
+                            ocrResults.add("Błąd wczytywania obrazu: " + e.getMessage());
+                            adapter.notifyDataSetChanged();
+                        }
+                    }
+                });
+
         btnOpenCamera.setOnClickListener(view -> {
             Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
             cameraLauncher.launch(cameraIntent);
+        });
+
+        btnSelectFromGallery.setOnClickListener(view -> {
+            Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+            galleryLauncher.launch(intent);
         });
 
         btnStartOcr.setOnClickListener(view -> {
             if (capturedImage != null) {
                 processImageWithMlKit(capturedImage);
             } else {
-                ocrResults.add("Najpierw wykonaj zdjęcie!");
+                ocrResults.add("Najpierw wykonaj zdjęcie lub wybierz obraz!");
                 adapter.notifyDataSetChanged();
             }
         });
@@ -84,14 +105,11 @@ public class MainActivity extends AppCompatActivity {
                 .addOnSuccessListener(resultText -> {
                     String recognizedText = resultText.getText().toUpperCase();
 
-                    // Czyścimy poprzednie wyniki
                     ocrResults.clear();
 
-                    // Definiujemy wzorzec na ciągi z co najmniej 2 slashami
                     Pattern slashPattern = Pattern.compile("[^\\s/]+(?:/[^\\s/]+){2,}");
                     Matcher matcher = slashPattern.matcher(recognizedText);
 
-                    // Wypisujemy wszystkie dopasowania
                     boolean foundAny = false;
                     while (matcher.find()) {
                         foundAny = true;
@@ -111,5 +129,4 @@ public class MainActivity extends AppCompatActivity {
                     adapter.notifyDataSetChanged();
                 });
     }
-
 }
