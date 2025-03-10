@@ -13,19 +13,23 @@
         <Button
             android:id="@+id/btnOpenCamera"
 
+            style="@style/Widget.Material3.Button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Zrób zdjęcie"
             android:layout_marginTop="10dp"
-            android:layout_marginEnd="20dp" />
+            android:layout_marginEnd="20dp"
+            android:backgroundTint="#F80404"
+            android:text="Zrób zdjęcie"
+            android:textAllCaps="false" />
 
         <Button
             android:id="@+id/btnSelectFromGallery"
 
             android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Wybierz z galerii"
-        android:layout_marginTop="10dp" />
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:backgroundTint="#2A47EF"
+            android:text="Wybierz z galerii" />
     </LinearLayout>
     <ImageView
         android:id="@+id/imgPreview"
@@ -38,8 +42,9 @@
         android:id="@+id/btnStartOcr"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Rozpocznij OCR"
-        android:layout_marginTop="10dp" />
+        android:layout_marginTop="10dp"
+        android:backgroundTint="#5E35B1"
+        android:text="Rozpocznij OCR" />
 
     <ListView
         android:id="@+id/lstResults"
