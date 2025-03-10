@@ -104,12 +104,13 @@ public class MainActivity extends AppCompatActivity {
         recognizer.process(image)
                 .addOnSuccessListener(resultText -> {
                     String recognizedText = resultText.getText().toUpperCase();
+                    
+                    recognizedText = recognizedText.replaceAll("WYSTNSENIA", "WYSTAWIENIA");
                     ocrResults.clear();
 
 
                     Pattern invoicePattern = Pattern.compile("[^\\s/]+(?:/[^\\s/]+){2,}");
                     Matcher invoiceMatcher = invoicePattern.matcher(recognizedText);
-
                     if (invoiceMatcher.find()) {
                         String invoiceNumber = invoiceMatcher.group();
                         ocrResults.add("Numer faktury: " + invoiceNumber);
@@ -118,44 +119,61 @@ public class MainActivity extends AppCompatActivity {
                     }
 
 
-                    Pattern datePattern = Pattern.compile("\\b(\\d{4}[-.]\\d{2}[-.]\\d{2}|\\d{2}[-.]\\d{2}[-.]\\d{4})\\b");
-                    Matcher dateMatcher = datePattern.matcher(recognizedText);
-
-
-                    Pattern labelPattern = Pattern.compile("(DATA WYSTAWIENIA|WYSTAWIONO|DNIA)");
-
-
-                    List<Integer> datePositions = new ArrayList<>();
-                    List<String> foundDates = new ArrayList<>();
-
-                    while (dateMatcher.find()) {
-                        datePositions.add(dateMatcher.start());
-                        foundDates.add(dateMatcher.group());
-                    }
-
-
-                    Matcher labelMatcher = labelPattern.matcher(recognizedText);
                     String selectedDate = null;
-                    int minDistance = Integer.MAX_VALUE;
 
-                    while (labelMatcher.find()) {
-                        int labelPos = labelMatcher.start();
-
-
-                        for (int i = 0; i < datePositions.size(); i++) {
-                            int distance = Math.abs(labelPos - datePositions.get(i));
-                            if (distance < minDistance) {
-                                minDistance = distance;
-                                selectedDate = foundDates.get(i);
-                            }
+                    Pattern exactLabelPattern = Pattern.compile("DATA WYSTAWIENIA", Pattern.CASE_INSENSITIVE);
+                    Matcher exactLabelMatcher = exactLabelPattern.matcher(recognizedText);
+                    if (exactLabelMatcher.find()) {
+                        int labelEnd = exactLabelMatcher.end();
+                        int endIndex = Math.min(recognizedText.length(), labelEnd + 50);
+                        String afterLabel = recognizedText.substring(labelEnd, endIndex);
+                        Pattern datePattern = Pattern.compile("\\b(\\d{4}[-.]\\d{2}[-.]\\d{2}|\\d{2}[-.]\\d{2}[-.]\\d{4})\\b");
+                        Matcher dateAfterLabelMatcher = datePattern.matcher(afterLabel);
+                        if (dateAfterLabelMatcher.find()) {
+                            selectedDate = dateAfterLabelMatcher.group();
                         }
                     }
 
 
-                    if (selectedDate == null && !foundDates.isEmpty()) {
-                        selectedDate = foundDates.get(0);
-                    }
+                    if (selectedDate == null) {
 
+                        Pattern datePattern = Pattern.compile("\\b(\\d{4}[-.]\\d{2}[-.]\\d{2}|\\d{2}[-.]\\d{2}[-.]\\d{4})\\b");
+                        Matcher dateMatcher = datePattern.matcher(recognizedText);
+                        List<Integer> datePositions = new ArrayList<>();
+                        List<String> foundDates = new ArrayList<>();
+                        while (dateMatcher.find()) {
+                            datePositions.add(dateMatcher.start());
+                            foundDates.add(dateMatcher.group());
+                        }
+
+                        Pattern wordPattern = Pattern.compile("\\S+");
+                        Matcher wordMatcher = wordPattern.matcher(recognizedText);
+                        List<Integer> labelPositions = new ArrayList<>();
+                        String[] targetLabels = {"WYSTAWIENIA", "WYSTAWIONO", "DNIA"};
+                        while (wordMatcher.find()) {
+                            String word = wordMatcher.group();
+                            for (String target : targetLabels) {
+                                if (isSimilar(word, target)) {
+                                    labelPositions.add(wordMatcher.start());
+                                    break;
+                                }
+                            }
+                        }
+                        int minDistance = Integer.MAX_VALUE;
+                        for (int labelPos : labelPositions) {
+                            for (int i = 0; i < datePositions.size(); i++) {
+                                int distance = Math.abs(labelPos - datePositions.get(i));
+                                if (distance < minDistance) {
+                                    minDistance = distance;
+                                    selectedDate = foundDates.get(i);
+                                }
+                            }
+                        }
+
+                        if (selectedDate == null && !foundDates.isEmpty()) {
+                            selectedDate = foundDates.get(0);
+                        }
+                    }
 
                     if (selectedDate != null) {
                         ocrResults.add("Data wystawienia: " + selectedDate);
@@ -173,5 +191,37 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+    private int levenshteinDistance(String s1, String s2) {
+        int[][] dp = new int[s1.length() + 1][s2.length() + 1];
+        for (int i = 0; i <= s1.length(); i++) {
+            dp[i][0] = i;
+        }
+        for (int j = 0; j <= s2.length(); j++) {
+            dp[0][j] = j;
+        }
+        for (int i = 1; i <= s1.length(); i++) {
+            for (int j = 1; j <= s2.length(); j++) {
+                int cost = s1.charAt(i - 1) == s2.charAt(j - 1) ? 0 : 1;
+                dp[i][j] = Math.min(dp[i - 1][j] + 1,
+                        Math.min(dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost));
+            }
+        }
+        return dp[s1.length()][s2.length()];
+    }
+
+
+    private boolean isSimilar(String s1, String s2) {
+        int distance = levenshteinDistance(s1, s2);
+        int maxLen = Math.max(s1.length(), s2.length());
+        double normalized = (double) distance / maxLen;
+
+        return normalized < 0.3;
+    }
+
+
 
 }
+
+
+
+
