@@ -37,11 +37,16 @@
         android:layout_height="350dp"
         android:layout_marginTop="10dp"
         android:scaleType="centerInside" />
-
+    <LinearLayout
+        style="?android:attr/buttonBarStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
     <Button
         android:id="@+id/btnStartOcr"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginEnd="20dp"
         android:layout_marginTop="10dp"
         android:backgroundTint="#5E35B1"
         android:text="Rozpocznij OCR" />
@@ -53,7 +58,7 @@
         android:layout_marginTop="10dp"
         android:backgroundTint="#FFA500"
         android:text="Obróć zdjęcie" />
-
+    </LinearLayout>
     <ListView
         android:id="@+id/lstResults"
         android:layout_width="match_parent"
