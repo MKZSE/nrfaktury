@@ -58,7 +58,7 @@ public class MainActivity extends AppCompatActivity {
             android.content.ClipData clip = android.content.ClipData.newPlainText("Skopiowany tekst", selectedText);
             clipboard.setPrimaryClip(clip);
             Toast.makeText(this, "Skopiowano: " + selectedText, Toast.LENGTH_SHORT).show();
-            return true; 
+            return true;
         });
 
         cameraLauncher = registerForActivityResult(
