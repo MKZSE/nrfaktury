@@ -10,7 +10,7 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.Toast;
-
+import android.graphics.Matrix;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
@@ -47,9 +47,19 @@ public class MainActivity extends AppCompatActivity {
         Button btnOpenCamera = findViewById(R.id.btnOpenCamera);
         Button btnSelectFromGallery = findViewById(R.id.btnSelectFromGallery);
         Button btnStartOcr = findViewById(R.id.btnStartOcr);
+        Button btnRotateImage = findViewById(R.id.btnRotateImage);
 
         adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, ocrResults);
         lstResults.setAdapter(adapter);
+
+        btnRotateImage.setOnClickListener(view -> {
+            if (capturedImage != null) {
+                capturedImage = rotateBitmap(capturedImage, 90);
+                imgPreview.setImageBitmap(capturedImage);
+            } else {
+                Toast.makeText(this, "Najpierw wykonaj zdjęcie lub wybierz obraz!", Toast.LENGTH_SHORT).show();
+            }
+        });
 
         lstResults.setOnItemLongClickListener((parent, view, position, id) -> {
             String selectedText = ocrResults.get(position);
@@ -229,7 +239,11 @@ public class MainActivity extends AppCompatActivity {
         return normalized < 0.3;
     }
 
-
+    private Bitmap rotateBitmap(Bitmap source, float angle) {
+        Matrix matrix = new Matrix();
+        matrix.postRotate(angle);
+        return Bitmap.createBitmap(source, 0, 0, source.getWidth(), source.getHeight(), matrix, true);
+    }
 
 }
 

@@ -34,7 +34,7 @@
     <ImageView
         android:id="@+id/imgPreview"
         android:layout_width="match_parent"
-        android:layout_height="400dp"
+        android:layout_height="350dp"
         android:layout_marginTop="10dp"
         android:scaleType="centerInside" />
 
@@ -45,6 +45,14 @@
         android:layout_marginTop="10dp"
         android:backgroundTint="#5E35B1"
         android:text="Rozpocznij OCR" />
+
+    <Button
+        android:id="@+id/btnRotateImage"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:backgroundTint="#FFA500"
+        android:text="Obróć zdjęcie" />
 
     <ListView
         android:id="@+id/lstResults"
