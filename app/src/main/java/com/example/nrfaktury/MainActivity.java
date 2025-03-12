@@ -1,20 +1,24 @@
 package com.example.nrfaktury;
 
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.Matrix;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
-import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.ImageView;
-import android.widget.ListView;
 import android.widget.Toast;
-import android.graphics.Matrix;
+
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.button.MaterialButton;
 import com.google.mlkit.vision.common.InputImage;
 import com.google.mlkit.vision.text.TextRecognizer;
 import com.google.mlkit.vision.text.TextRecognition;
@@ -29,12 +33,11 @@ import java.util.regex.Pattern;
 public class MainActivity extends AppCompatActivity {
 
     private ImageView imgPreview;
-    private ListView lstResults;
+    private RecyclerView rvResults;
     private List<String> ocrResults = new ArrayList<>();
-    private ArrayAdapter<String> adapter;
+    private OCRResultsAdapter adapter;
 
     private Bitmap originalImage;
-
     private Bitmap processingImage;
 
     private int rotationCount = 0;
@@ -49,24 +52,16 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         imgPreview = findViewById(R.id.imgPreview);
-        lstResults = findViewById(R.id.lstResults);
-        Button btnOpenCamera = findViewById(R.id.btnOpenCamera);
-        Button btnSelectFromGallery = findViewById(R.id.btnSelectFromGallery);
-        Button btnStartOcr = findViewById(R.id.btnStartOcr);
+        rvResults = findViewById(R.id.rvResults);
+        MaterialButton btnOpenCamera = findViewById(R.id.btnOpenCamera);
+        MaterialButton btnSelectFromGallery = findViewById(R.id.btnSelectFromGallery);
+        MaterialButton btnStartOcr = findViewById(R.id.btnStartOcr);
 
 
-        adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, ocrResults);
-        lstResults.setAdapter(adapter);
+        adapter = new OCRResultsAdapter(this, ocrResults);
+        rvResults.setLayoutManager(new LinearLayoutManager(this));
+        rvResults.setAdapter(adapter);
 
-        lstResults.setOnItemLongClickListener((parent, view, position, id) -> {
-            String selectedText = ocrResults.get(position);
-            android.content.ClipboardManager clipboard =
-                    (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-            android.content.ClipData clip = android.content.ClipData.newPlainText("Skopiowany tekst", selectedText);
-            clipboard.setPrimaryClip(clip);
-            Toast.makeText(this, "Skopiowano: " + selectedText, Toast.LENGTH_SHORT).show();
-            return true;
-        });
 
         cameraLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
@@ -74,15 +69,14 @@ public class MainActivity extends AppCompatActivity {
                     if (result.getResultCode() == RESULT_OK && result.getData() != null) {
                         Bundle extras = result.getData().getExtras();
                         if (extras != null) {
-
                             originalImage = (Bitmap) extras.get("data");
                             imgPreview.setImageBitmap(originalImage);
-
                             processingImage = originalImage;
                             rotationCount = 0;
                         }
                     }
                 });
+
 
         galleryLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
@@ -162,9 +156,7 @@ public class MainActivity extends AppCompatActivity {
 
                     if (labelFound && selectedDate == null && rotationCount < MAX_ROTATIONS) {
                         rotationCount++;
-
                         processingImage = rotateBitmap(bitmap, 90);
-
                         processImageWithMlKit(processingImage);
                         return;
                     }
@@ -253,5 +245,48 @@ public class MainActivity extends AppCompatActivity {
         Matrix matrix = new Matrix();
         matrix.postRotate(angle);
         return Bitmap.createBitmap(source, 0, 0, source.getWidth(), source.getHeight(), matrix, true);
+    }
+
+
+    private static class OCRResultsAdapter extends RecyclerView.Adapter<OCRResultsAdapter.ViewHolder> {
+        private final Context context;
+        private final List<String> results;
+
+        OCRResultsAdapter(Context context, List<String> results) {
+            this.context = context;
+            this.results = results;
+        }
+
+        @Override
+        public ViewHolder onCreateViewHolder(android.view.ViewGroup parent, int viewType) {
+            android.view.View view = android.view.LayoutInflater.from(context)
+                    .inflate(android.R.layout.simple_list_item_1, parent, false);
+            return new ViewHolder(view);
+        }
+
+        @Override
+        public void onBindViewHolder(ViewHolder holder, int position) {
+            String text = results.get(position);
+            ((android.widget.TextView) holder.itemView).setText(text);
+
+            holder.itemView.setOnLongClickListener(v -> {
+                ClipboardManager clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+                ClipData clip = ClipData.newPlainText("Skopiowany tekst", text);
+                clipboard.setPrimaryClip(clip);
+                Toast.makeText(context, "Skopiowano: " + text, Toast.LENGTH_SHORT).show();
+                return true;
+            });
+        }
+
+        @Override
+        public int getItemCount() {
+            return results.size();
+        }
+
+        static class ViewHolder extends RecyclerView.ViewHolder {
+            ViewHolder(android.view.View itemView) {
+                super(itemView);
+            }
+        }
     }
 }
