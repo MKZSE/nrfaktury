@@ -32,7 +32,13 @@ public class MainActivity extends AppCompatActivity {
     private ListView lstResults;
     private List<String> ocrResults = new ArrayList<>();
     private ArrayAdapter<String> adapter;
-    private Bitmap capturedImage;
+
+    private Bitmap originalImage;
+
+    private Bitmap processingImage;
+
+    private int rotationCount = 0;
+    private static final int MAX_ROTATIONS = 3;
 
     private ActivityResultLauncher<Intent> cameraLauncher;
     private ActivityResultLauncher<Intent> galleryLauncher;
@@ -47,19 +53,10 @@ public class MainActivity extends AppCompatActivity {
         Button btnOpenCamera = findViewById(R.id.btnOpenCamera);
         Button btnSelectFromGallery = findViewById(R.id.btnSelectFromGallery);
         Button btnStartOcr = findViewById(R.id.btnStartOcr);
-        Button btnRotateImage = findViewById(R.id.btnRotateImage);
+
 
         adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, ocrResults);
         lstResults.setAdapter(adapter);
-
-        btnRotateImage.setOnClickListener(view -> {
-            if (capturedImage != null) {
-                capturedImage = rotateBitmap(capturedImage, 90);
-                imgPreview.setImageBitmap(capturedImage);
-            } else {
-                Toast.makeText(this, "Najpierw wykonaj zdjęcie lub wybierz obraz!", Toast.LENGTH_SHORT).show();
-            }
-        });
 
         lstResults.setOnItemLongClickListener((parent, view, position, id) -> {
             String selectedText = ocrResults.get(position);
@@ -77,8 +74,12 @@ public class MainActivity extends AppCompatActivity {
                     if (result.getResultCode() == RESULT_OK && result.getData() != null) {
                         Bundle extras = result.getData().getExtras();
                         if (extras != null) {
-                            capturedImage = (Bitmap) extras.get("data");
-                            imgPreview.setImageBitmap(capturedImage);
+
+                            originalImage = (Bitmap) extras.get("data");
+                            imgPreview.setImageBitmap(originalImage);
+
+                            processingImage = originalImage;
+                            rotationCount = 0;
                         }
                     }
                 });
@@ -89,8 +90,10 @@ public class MainActivity extends AppCompatActivity {
                     if (result.getResultCode() == RESULT_OK && result.getData() != null) {
                         try {
                             Uri imageUri = result.getData().getData();
-                            capturedImage = MediaStore.Images.Media.getBitmap(this.getContentResolver(), imageUri);
-                            imgPreview.setImageBitmap(capturedImage);
+                            originalImage = MediaStore.Images.Media.getBitmap(this.getContentResolver(), imageUri);
+                            imgPreview.setImageBitmap(originalImage);
+                            processingImage = originalImage;
+                            rotationCount = 0;
                         } catch (IOException e) {
                             ocrResults.add("Błąd wczytywania obrazu: " + e.getMessage());
                             adapter.notifyDataSetChanged();
@@ -109,8 +112,8 @@ public class MainActivity extends AppCompatActivity {
         });
 
         btnStartOcr.setOnClickListener(view -> {
-            if (capturedImage != null) {
-                processImageWithMlKit(capturedImage);
+            if (processingImage != null) {
+                processImageWithMlKit(processingImage);
             } else {
                 ocrResults.add("Najpierw wykonaj zdjęcie lub wybierz obraz!");
                 adapter.notifyDataSetChanged();
@@ -125,7 +128,6 @@ public class MainActivity extends AppCompatActivity {
         recognizer.process(image)
                 .addOnSuccessListener(resultText -> {
                     String recognizedText = resultText.getText().toUpperCase();
-
                     recognizedText = recognizedText.replaceAll("WYSTNSENIA", "WYSTAWIENIA");
                     ocrResults.clear();
 
@@ -139,12 +141,14 @@ public class MainActivity extends AppCompatActivity {
                         ocrResults.add("Nie znaleziono numeru faktury.");
                     }
 
-
                     String selectedDate = null;
+                    boolean labelFound = false;
+
 
                     Pattern exactLabelPattern = Pattern.compile("DATA WYSTAWIENIA", Pattern.CASE_INSENSITIVE);
                     Matcher exactLabelMatcher = exactLabelPattern.matcher(recognizedText);
                     if (exactLabelMatcher.find()) {
+                        labelFound = true;
                         int labelEnd = exactLabelMatcher.end();
                         int endIndex = Math.min(recognizedText.length(), labelEnd + 50);
                         String afterLabel = recognizedText.substring(labelEnd, endIndex);
@@ -156,8 +160,17 @@ public class MainActivity extends AppCompatActivity {
                     }
 
 
-                    if (selectedDate == null) {
+                    if (labelFound && selectedDate == null && rotationCount < MAX_ROTATIONS) {
+                        rotationCount++;
 
+                        processingImage = rotateBitmap(bitmap, 90);
+
+                        processImageWithMlKit(processingImage);
+                        return;
+                    }
+
+
+                    if (selectedDate == null) {
                         Pattern datePattern = Pattern.compile("\\b(\\d{4}[-.]\\d{2}[-.]\\d{2}|\\d{2}[-.]\\d{2}[-.]\\d{4})\\b");
                         Matcher dateMatcher = datePattern.matcher(recognizedText);
                         List<Integer> datePositions = new ArrayList<>();
@@ -211,7 +224,6 @@ public class MainActivity extends AppCompatActivity {
                 });
     }
 
-
     private int levenshteinDistance(String s1, String s2) {
         int[][] dp = new int[s1.length() + 1][s2.length() + 1];
         for (int i = 0; i <= s1.length(); i++) {
@@ -230,12 +242,10 @@ public class MainActivity extends AppCompatActivity {
         return dp[s1.length()][s2.length()];
     }
 
-
     private boolean isSimilar(String s1, String s2) {
         int distance = levenshteinDistance(s1, s2);
         int maxLen = Math.max(s1.length(), s2.length());
         double normalized = (double) distance / maxLen;
-
         return normalized < 0.3;
     }
 
@@ -244,9 +254,4 @@ public class MainActivity extends AppCompatActivity {
         matrix.postRotate(angle);
         return Bitmap.createBitmap(source, 0, 0, source.getWidth(), source.getHeight(), matrix, true);
     }
-
 }
-
-
-
-
